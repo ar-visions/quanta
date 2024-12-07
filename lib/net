@@ -1,0 +1,76 @@
+#ifndef _NET_
+#define _NET_
+#include <A>
+
+#define protocol_schema(X,Y) \
+    enum_value(X,Y, undefined) \
+    enum_value(X,Y, http) \
+    enum_value(X,Y, https) \
+    enum_value(X,Y, wss) \
+    enum_value(X,Y, ssh)
+declare_enum(protocol)
+
+#define web_schema(X,Y) \
+    enum_value(X,Y, undefined) \
+    enum_value(X,Y, Response) \
+    enum_value(X,Y, Get) \
+    enum_value(X,Y, Post) \
+    enum_value(X,Y, Put) \
+    enum_value(X,Y, Delete)
+declare_enum(web)
+
+#define uri_schema(X,Y) \
+    i_prop    (X,Y, public,  web,      mtype) \
+    i_prop    (X,Y, public,  protocol, proto) \
+    i_prop    (X,Y, public,  string,   host) \
+    i_prop    (X,Y, public,  i32,      port) \
+    i_prop    (X,Y, public,  string,   query) \
+    i_prop    (X,Y, public,  string,   resource) \
+    i_prop    (X,Y, public,  map,      args) \
+    i_prop    (X,Y, public,  string,   version) \
+    i_method  (X,Y, public,  string,   addr) \
+    s_method  (X,Y, public,  string,   encode_fields, map) \
+    s_method  (X,Y, public,  uri,      parse, string) \
+    s_method  (X,Y, public,  string,   encode, string) \
+    s_method  (X,Y, public,  string,   decode, string)
+declare_class(uri)
+
+#define message_schema(X,Y) \
+    i_prop    (X,Y, public,  uri,     query) \
+    i_prop    (X,Y, public,  i32,     code) \
+    i_prop    (X,Y, public,  map,     headers) \
+    i_prop    (X,Y, public,  object,  content) \
+    i_method  (X,Y, public,  web,     method_type) \
+    i_method  (X,Y, public,  bool,    read_headers, sock) \
+    i_method  (X,Y, public,  bool,    read_content, sock) \
+    i_method  (X,Y, public,  bool,    write_status, sock) \
+    i_method  (X,Y, public,  bool,    write_headers, sock) \
+    i_method  (X,Y, public,  bool,    write, sock) \
+    i_method  (X,Y, public,  string,  text) \
+    i_method  (X,Y, public,  map,     cookies) \
+    s_method  (X,Y, public,  message, query, uri, map, object) \
+    s_method  (X,Y, public,  message, response, uri, i32, object, map) \
+    s_method  (X,Y, public,  symbol,  code_symbol, i32)
+declare_class(message)
+
+#define sock_schema(X,Y) \
+    i_method  (X,Y, public,  bool,     bind, uri) \
+    i_method  (X,Y, public,  bool,     connect) \
+    i_method  (X,Y, public,  bool,     close) \
+    i_method  (X,Y, public,  none,     set_timeout, i64) \
+    i_method  (X,Y, public,  bool,     read_sz, raw_t, sz) \
+    i_method  (X,Y, public,  sz,       recv, raw_t, sz) \
+    i_method  (X,Y, public,  sz,       send, raw_t, sz) \
+    i_method  (X,Y, public,  sz,       send, string) \
+    i_method  (X,Y, public,  sz,       send, object) \
+    i_method  (X,Y, public,  vector,   read_until, string, i32) \
+    s_method  (X,Y, public,  sock,     accept, TLS) \
+    i_cast    (X,Y, public,  bool)
+declare_class(sock)
+
+#define TLS_schema(X,Y) \
+    i_prop    (X,Y, intern,  raw_t,    ssl_ctx) \
+    i_prop    (X,Y, intern,  raw_t,    ssl) \
+    i_prop    (X,Y, public,  uri,      addr)
+declare_class(TLS)
+#endif
