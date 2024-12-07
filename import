@@ -1,24 +1,10 @@
-llvm https://github.com/ar-visions/llvm-project d37feb7
-	-S ../llvm
-	-G Ninja 
-	-DLLVM_ENABLE_ASSERTIONS=ON
-	-DLLVM_ENABLE_PROJECTS='clang;lld'
-	-DLLVM_ENABLE_FFI=OFF
-	-DLLVM_ENABLE_RTTI=OFF
-    -DLLVM_USE_LINKER=gold
-	-DLLVM_BINUTILS_INCDIR=/usr/include
-	-DCLANG_DEFAULT_CXX_STDLIB=libstdc++
-	-DCLANG_DEFAULT_PIE_ON_LINUX=ON
-	-DCLANG_CONFIG_FILE_SYSTEM_DIR=/etc/clang
-	-DLLVM_ENABLE_LIBCXX=OFF
-	-DBUILD_SHARED_LIBS=ON
-	-DLLVM_BUILD_LLVM_DYLIB=OFF
-	-DLLVM_LINK_LLVM_DYLIB=OFF
-	-DLLVM_TARGETS_TO_BUILD='host;X86'
+mbedtls https://github.com/Mbed-TLS/mbedtls 1873d3b
+	-DENABLE_TESTING=0
+	-DLINK_WITH_PTHREAD=1
 
-libffi https://github.com/libffi/libffi 3d0ce1e
+ssh https://git.libssh.org/projects/libssh.git 5d792a3b5a5fc2331cb52d6febdd886c5df580e3
 
 lib:
-    ffi
+    mbedtls ssh
 app:
     A

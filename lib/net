@@ -2,6 +2,9 @@
 #define _NET_
 #include <A>
 
+/// opaque
+typedef struct Session* Session;
+
 #define protocol_schema(X,Y) \
     enum_value(X,Y, undefined) \
     enum_value(X,Y, http) \
@@ -33,7 +36,55 @@ declare_enum(web)
     s_method  (X,Y, public,  uri,      parse, string) \
     s_method  (X,Y, public,  string,   encode, string) \
     s_method  (X,Y, public,  string,   decode, string)
+#ifndef uri_intern
+#define uri_intern
+#endif
 declare_class(uri)
+
+typedef struct TLS* TLS;
+
+#define sock_schema(X,Y) \
+    i_prop    (X,Y, intern,  Session,  data) \
+    i_method  (X,Y, public,  bool,     bind, uri) \
+    i_method  (X,Y, public,  bool,     connect) \
+    i_method  (X,Y, public,  bool,     close) \
+    i_method  (X,Y, public,  none,     set_timeout, i64) \
+    i_method  (X,Y, public,  bool,     read_sz, handle, sz) \
+    i_method  (X,Y, public,  sz,       recv, handle, sz) \
+    i_method  (X,Y, public,  sz,       send_bytes,  handle, sz) \
+    i_method  (X,Y, public,  sz,       send_string, string) \
+    i_method  (X,Y, public,  sz,       send_object, object) \
+    i_method  (X,Y, public,  vector,   read_until, string, i32) \
+    s_method  (X,Y, public,  sock,     accept, TLS) \
+    i_override(X,Y, cast,    bool)
+#ifndef sock_intern
+#define sock_intern
+#endif
+declare_class(sock)
+
+#define Session_schema(X,Y) \
+    i_prop    (X,Y, public,  TLS,      tls) \
+    i_prop    (X,Y, intern,  handle,   fd) \
+    i_prop    (X,Y, intern,  handle,   ssl) \
+    i_prop    (X,Y, public,  bool,     connected) \
+    i_prop    (X,Y, public,  num,      timeout_ms) \
+    i_method  (X,Y, public,  none,     init_accept,  TLS) \
+    i_method  (X,Y, public,  none,     init_connect, uri) \
+    i_method  (X,Y, public,  bool,     bind,        uri) \
+    i_method  (X,Y, public,  bool,     connect) \
+    i_method  (X,Y, public,  bool,     close) \
+    i_method  (X,Y, public,  none,     set_timeout, i64) \
+    i_method  (X,Y, public,  bool,     read_sz,     handle, sz) \
+    i_method  (X,Y, public,  sz,       recv,        handle, sz) \
+    i_method  (X,Y, public,  sz,       send,        handle, sz) \
+    i_method  (X,Y, public,  sz,       send_str,    string, array) \
+    i_method  (X,Y, public,  sz,       send_object, object) \
+    i_method  (X,Y, public,  vector,   read_until,  string, i32) \
+    s_method  (X,Y, public,  sock,     accept,      TLS)
+#ifndef Session_intern
+#define Session_intern
+#endif
+declare_class(Session)
 
 #define message_schema(X,Y) \
     i_prop    (X,Y, public,  uri,     query) \
@@ -51,26 +102,21 @@ declare_class(uri)
     s_method  (X,Y, public,  message, query, uri, map, object) \
     s_method  (X,Y, public,  message, response, uri, i32, object, map) \
     s_method  (X,Y, public,  symbol,  code_symbol, i32)
+#ifndef message_intern
+#define message_intern
+#endif
 declare_class(message)
 
-#define sock_schema(X,Y) \
-    i_method  (X,Y, public,  bool,     bind, uri) \
-    i_method  (X,Y, public,  bool,     connect) \
-    i_method  (X,Y, public,  bool,     close) \
-    i_method  (X,Y, public,  none,     set_timeout, i64) \
-    i_method  (X,Y, public,  bool,     read_sz, raw_t, sz) \
-    i_method  (X,Y, public,  sz,       recv, raw_t, sz) \
-    i_method  (X,Y, public,  sz,       send, raw_t, sz) \
-    i_method  (X,Y, public,  sz,       send, string) \
-    i_method  (X,Y, public,  sz,       send, object) \
-    i_method  (X,Y, public,  vector,   read_until, string, i32) \
-    s_method  (X,Y, public,  sock,     accept, TLS) \
-    i_cast    (X,Y, public,  bool)
-declare_class(sock)
 
 #define TLS_schema(X,Y) \
-    i_prop    (X,Y, intern,  raw_t,    ssl_ctx) \
-    i_prop    (X,Y, intern,  raw_t,    ssl) \
+    i_prop    (X,Y, intern,  handle,   ssl_ctx) \
+    i_prop    (X,Y, intern,  handle,   ssl) \
     i_prop    (X,Y, public,  uri,      addr)
+#ifndef TLS_intern
+#define TLS_intern
+#endif
 declare_class(TLS)
+
+string dns(string hostname);
+
 #endif
