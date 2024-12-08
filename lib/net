@@ -32,8 +32,7 @@ declare_enum(web)
     i_prop    (X,Y, public,  map,      args) \
     i_prop    (X,Y, public,  string,   version) \
     i_method  (X,Y, public,  string,   addr) \
-    s_method  (X,Y, public,  string,   encode_fields, map) \
-    s_method  (X,Y, public,  uri,      parse, string) \
+    s_method  (X,Y, public,  uri,      parse, string, uri) \
     s_method  (X,Y, public,  string,   encode, string) \
     s_method  (X,Y, public,  string,   decode, string)
 #ifndef uri_intern
@@ -52,24 +51,26 @@ typedef struct TLS* TLS;
     i_method  (X,Y, public,  bool,     read_sz, handle, sz) \
     i_method  (X,Y, public,  sz,       recv, handle, sz) \
     i_method  (X,Y, public,  sz,       send_bytes,  handle, sz) \
-    i_method  (X,Y, public,  sz,       send_string, string) \
     i_method  (X,Y, public,  sz,       send_object, object) \
     i_method  (X,Y, public,  vector,   read_until, string, i32) \
     s_method  (X,Y, public,  sock,     accept, TLS) \
+    i_ctr     (X,Y, public,  TLS) \
+    i_ctr     (X,Y, public,  uri) \
     i_override(X,Y, cast,    bool)
 #ifndef sock_intern
 #define sock_intern
 #endif
 declare_class(sock)
 
+
 #define Session_schema(X,Y) \
     i_prop    (X,Y, public,  TLS,      tls) \
-    i_prop    (X,Y, intern,  handle,   fd) \
-    i_prop    (X,Y, intern,  handle,   ssl) \
+    i_prop    (X,Y, intern,  mbedtls_net_context,   fd) \
+    i_prop    (X,Y, intern,  mbedtls_ssl_context,   ssl) \
     i_prop    (X,Y, public,  bool,     connected) \
     i_prop    (X,Y, public,  num,      timeout_ms) \
-    i_method  (X,Y, public,  none,     init_accept,  TLS) \
-    i_method  (X,Y, public,  none,     init_connect, uri) \
+    i_ctr     (X,Y, public,  TLS) \
+    i_ctr     (X,Y, public,  uri) \
     i_method  (X,Y, public,  bool,     bind,        uri) \
     i_method  (X,Y, public,  bool,     connect) \
     i_method  (X,Y, public,  bool,     close) \
@@ -77,14 +78,14 @@ declare_class(sock)
     i_method  (X,Y, public,  bool,     read_sz,     handle, sz) \
     i_method  (X,Y, public,  sz,       recv,        handle, sz) \
     i_method  (X,Y, public,  sz,       send,        handle, sz) \
-    i_method  (X,Y, public,  sz,       send_str,    string, array) \
-    i_method  (X,Y, public,  sz,       send_object, object) \
+    i_method  (X,Y, public,  sz,       send_string, string) \
     i_method  (X,Y, public,  vector,   read_until,  string, i32) \
-    s_method  (X,Y, public,  sock,     accept,      TLS)
+    s_method  (X,Y, public,  Session,  accept,      TLS)
 #ifndef Session_intern
 #define Session_intern
 #endif
 declare_class(Session)
+
 
 #define message_schema(X,Y) \
     i_prop    (X,Y, public,  uri,     query) \
@@ -101,22 +102,37 @@ declare_class(Session)
     i_method  (X,Y, public,  map,     cookies) \
     s_method  (X,Y, public,  message, query, uri, map, object) \
     s_method  (X,Y, public,  message, response, uri, i32, object, map) \
-    s_method  (X,Y, public,  symbol,  code_symbol, i32)
+    i_ctr     (X,Y, public,  sock) \
+    i_ctr     (X,Y, public,  i32) \
+    i_ctr     (X,Y, public,  string) \
+    i_override(X,Y, cast,    bool)
 #ifndef message_intern
 #define message_intern
 #endif
 declare_class(message)
 
 
+typedef struct iTLS* iTLS;
+
+
 #define TLS_schema(X,Y) \
+    i_prop    (X,Y, intern,  mbedtls_net_context,       fd) \
+    i_prop    (X,Y, intern,  mbedtls_entropy_context,   entropy) \
+    i_prop    (X,Y, intern,  mbedtls_ctr_drbg_context,  ctr_drbg) \
+    i_prop    (X,Y, intern,  mbedtls_ssl_config,        conf) \
+    i_prop    (X,Y, intern,  mbedtls_x509_crt,          srvcert) \
+    i_prop    (X,Y, intern,  mbedtls_pk_context,        pkey) \
+    i_prop    (X,Y, public,  uri,      url) \
     i_prop    (X,Y, intern,  handle,   ssl_ctx) \
     i_prop    (X,Y, intern,  handle,   ssl) \
-    i_prop    (X,Y, public,  uri,      addr)
+    i_prop    (X,Y, public,  uri,      addr) \
+    i_override(X,Y, method, init)
 #ifndef TLS_intern
 #define TLS_intern
 #endif
 declare_class(TLS)
 
 string dns(string hostname);
+object json_request(uri addr, map args, map headers, subprocedure success_handler, subprocedure failure_handler);
 
 #endif

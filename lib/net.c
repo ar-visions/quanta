@@ -7,8 +7,7 @@
 #include <windows.h>
 #endif
 
-//#include <mbedtls/build_info.h>
-
+#include <mbedtls/build_info.h>
 #include <mbedtls/platform.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
@@ -42,27 +41,29 @@
 #include <mbedtls/error.h>
 #include <mbedtls/debug.h>
 
-
 #include <import>
 
+#define len(I,...) ({ __typeof__(I) _i_ = I; ftableI(_i_)->len(_i_, ## __VA_ARGS__); })
 
-
-define_class(Session)
-
-// Implementation example:
-none Session_init_accept(Session s, TLS tls) {
-    mbedtls_ssl_init(s->ssl);
-    mbedtls_net_init(s->fd);
-    mbedtls_ssl_setup(s->ssl, tls->conf);
+void test1() {
+    string s = string("hi");
+    int l = len(s);
 }
 
-none Session_init_connect(Session s, uri addr) {
-    s->tls = new(TLS, addr); 
+// Implementation example:
+none Session_with_TLS(Session s, TLS tls) {
+    mbedtls_ssl_init(&s->ssl);
+    mbedtls_net_init(&s->fd);
+    mbedtls_ssl_setup(&s->ssl, &tls->conf);
+}
+
+none Session_with_uri(Session s, uri addr) {
+    s->tls = TLS(addr, addr); 
 }
 
 bool Session_bind(Session s, uri addr) {
-    string s_port = str(cast(num, addr->port));
-    i32 res = mbedtls_net_bind(s->fd, addr->host->chars, s_port->chars, MBEDTLS_NET_PROTO_TCP);
+    string s_port = format("%i", addr->port);
+    i32 res = mbedtls_net_bind(&s->fd, addr->host->chars, s_port->chars, MBEDTLS_NET_PROTO_TCP);
     if (res != 0) {
         print("mbedtls_net_bind: fails with %i", res);
         return false;
@@ -74,28 +75,28 @@ bool Session_connect(Session s) {
     string host = s->tls->url->host;
     i32 port = s->tls->url->port;
     
-    i32 ret = mbedtls_ssl_setup(s->ssl, s->tls->conf);
+    i32 ret = mbedtls_ssl_setup(&s->ssl, &s->tls->conf);
     if (ret != 0) {
         error("mbedtls_ssl_setup failed: %i", ret);
         return false;
     }
 
-    string str_port = str(port);
-    ret = mbedtls_ssl_set_hostname(s->ssl, host->chars);
+    string str_port = format("%i", port);
+    ret = mbedtls_ssl_set_hostname(&s->ssl, host->chars);
     if (ret != 0) {
         error("mbedtls_ssl_set_hostname failed: %i", ret);
         return false;
     }
     
-    ret = mbedtls_net_connect(s->fd, host->chars, str_port->chars, MBEDTLS_NET_PROTO_TCP);
+    ret = mbedtls_net_connect(&s->fd, host->chars, str_port->chars, MBEDTLS_NET_PROTO_TCP);
     if (ret != 0) {
         error("mbedtls_net_connect failed: %i", ret);
         return false;
     }
     
-    mbedtls_ssl_set_bio(s->ssl, s->fd, mbedtls_net_send, mbedtls_net_recv, null);
+    mbedtls_ssl_set_bio(&s->ssl, &s->fd, mbedtls_net_send, mbedtls_net_recv, null);
     
-    while ((ret = mbedtls_ssl_handshake(s->ssl)) != 0) {
+    while ((ret = mbedtls_ssl_handshake(&s->ssl)) != 0) {
         if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
             error("mbedtls_ssl_handshake failed: %i", ret);
             return false;
@@ -107,7 +108,7 @@ bool Session_connect(Session s) {
 
 bool Session_close(Session s) {
     i32 ret;
-    while ((ret = mbedtls_ssl_close_notify(s->ssl)) < 0) {
+    while ((ret = mbedtls_ssl_close_notify(&s->ssl)) < 0) {
         if (ret != MBEDTLS_ERR_SSL_WANT_READ && 
             ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
             print("mbedtls_ssl_close_notify returned %i", ret);
@@ -124,7 +125,7 @@ none Session_set_timeout(Session s, i64 t) {
 bool Session_read_sz(Session s, handle v, sz sz) {
     i32 st = 0;
     for (i32 len = sz; len > 0;) {
-        i32 rcv = mbedtls_ssl_read(s->ssl, v + st, len);
+        i32 rcv = mbedtls_ssl_read(&s->ssl, v + st, len);
         if (rcv <= 0)
             return false;
         len -= rcv;
@@ -136,7 +137,7 @@ bool Session_read_sz(Session s, handle v, sz sz) {
 sz Session_recv(Session s, handle buf, sz len) {
     sz sz;
     do {
-        sz = mbedtls_ssl_read(s->ssl, buf, len);
+        sz = mbedtls_ssl_read(&s->ssl, buf, len);
         if (sz == MBEDTLS_ERR_SSL_WANT_READ || sz == MBEDTLS_ERR_SSL_WANT_WRITE)
             continue;
         break;
@@ -146,7 +147,7 @@ sz Session_recv(Session s, handle buf, sz len) {
 
 sz Session_send(Session s, handle buf, sz len) {
     sz ret;
-    while ((ret = mbedtls_ssl_write(s->ssl, buf, len)) <= 0) {
+    while ((ret = mbedtls_ssl_write(&s->ssl, buf, len)) <= 0) {
         if (ret == MBEDTLS_ERR_NET_CONN_RESET)
             return 0;
         if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE)
@@ -155,18 +156,13 @@ sz Session_send(Session s, handle buf, sz len) {
     return ret;
 }
 
-sz Session_send_str(Session s, string templ, array args) {
-    string val = format(templ->chars, args);
-    return send(s, val->chars, len(val));
-}
-
-sz Session_send_object(Session s, object v) {
-    return send(s, data(v), cast(sz, len(v)));
+sz Session_send_string(Session s, string v) {
+    return send(s, v->chars, v->len);
 }
 
 vector Session_read_until(Session s, string match, i32 max_len) {
     vector rbytes = new(vector);
-    sz slen = len(match);
+    sz slen = match->len;
     
     for (;;) {
         push(rbytes, 0);
@@ -184,24 +180,23 @@ vector Session_read_until(Session s, string match, i32 max_len) {
     return rbytes;
 }
 
-sock Session_accept(TLS tls) {
-    sock client = new(sock);
-    init_accept(client, tls);
+Session Session_accept(TLS tls) {
+    Session client = Session(tls);
     
     for (;;) {
-        mbedtls_net_init(client->fd);
-        mbedtls_ssl_setup(client->ssl, client->tls->conf);
+        mbedtls_net_init(&client->fd);
+        mbedtls_ssl_setup(&client->ssl, &client->tls->conf);
 
         i32 ret;
-        if ((ret = mbedtls_net_accept(tls->fd, client->fd, null, 0, null)) != 0) {
+        if ((ret = mbedtls_net_accept(&tls->fd, &client->fd, null, 0, null)) != 0) {
             return null;
         }
-        mbedtls_ssl_session_reset(client->ssl);
+        mbedtls_ssl_session_reset(&client->ssl);
         
         bool retry = false;
-        mbedtls_ssl_set_bio(client->ssl, client->fd, 
+        mbedtls_ssl_set_bio(&client->ssl, &client->fd, 
                            mbedtls_net_send, mbedtls_net_recv, null);
-        while ((ret = mbedtls_ssl_handshake(client->ssl)) != 0) {
+        while ((ret = mbedtls_ssl_handshake(&client->ssl)) != 0) {
             if (ret != MBEDTLS_ERR_SSL_WANT_READ && 
                 ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
                 print("mbedtls_ssl_handshake: %i", ret);
@@ -216,42 +211,14 @@ sock Session_accept(TLS tls) {
     return client;
 }
 
-// First, all the declarations:
 
-#define iTLS_schema(X,Y) \
-    i_prop    (X,Y, intern, handle,    fd) \
-    i_prop    (X,Y, intern, handle,    entropy) \
-    i_prop    (X,Y, intern, handle,    ctr_drbg) \
-    i_prop    (X,Y, intern, handle,    conf) \
-    i_prop    (X,Y, intern, handle,    srvcert) \
-    i_prop    (X,Y, intern, handle,    pkey) \
-    i_prop    (X,Y, public,  uri,     url) \
-    i_method  (X,Y, public,  none,    init, uri)
-declare_class(iTLS)
+void mbedtls_debug(void *ctx, int level, const char *file, int line, const char *str) {
+    ((void) level);
+    fprintf((FILE *) ctx, "mbedtls: %s:%04d: %s", file, line, str);
+    fflush((FILE *) ctx);
+}
 
-#define message_schema(X,Y) \
-    i_prop    (X,Y, public,  uri,     query) \
-    i_prop    (X,Y, public,  i32,     code) \
-    i_prop    (X,Y, public,  map,     headers) \
-    i_prop    (X,Y, public,  object,  content) \
-    i_method  (X,Y, public,  bool,    read_headers, sock) \
-    i_method  (X,Y, public,  bool,    read_content, sock) \
-    i_method  (X,Y, public,  bool,    write_status, sock) \
-    i_method  (X,Y, public,  bool,    write_headers, sock) \
-    i_method  (X,Y, public,  bool,    write, sock) \
-    i_method  (X,Y, public,  string,  text) \
-    i_method  (X,Y, public,  map,     cookies) \
-    i_method  (X,Y, public,  object,  header, object) \
-    s_method  (X,Y, public,  message, query, uri, map, object) \
-    s_method  (X,Y, public,  message, response, uri, i32, object, map) \
-    s_method  (X,Y, public,  symbol,  code_symbol, i32) \
-    i_cast    (X,Y, public,  bool)
-declare_class(message)
-
-// Implementations:
-
-none iTLS_init(iTLS tls, uri url) {
-    tls->url = url;
+none TLS_init(TLS tls) {
     static bool init_done = false;
     if (!init_done) {
         #ifdef _WIN32
@@ -265,17 +232,27 @@ none iTLS_init(iTLS tls, uri url) {
         init_done = true;
     }
 
-    mbedtls_net_init(tls->fd);
-    mbedtls_ssl_config_init(tls->conf);
-    mbedtls_x509_crt_init(tls->srvcert);
-    mbedtls_pk_init(tls->pkey);
-    mbedtls_entropy_init(tls->entropy);
-    mbedtls_ctr_drbg_init(tls->ctr_drbg);
+    /*
+    tls->fd         = (mbedtls_net_context *)     calloc(1, sizeof(mbedtls_net_context));
+    tls->conf       = (mbedtls_ssl_config *)      calloc(1, sizeof(mbedtls_ssl_config));
+    tls->srvcert    = (mbedtls_x509_crt *)        calloc(1, sizeof(mbedtls_x509_crt));
+    tls->pkey       = (mbedtls_pk_context *)      calloc(1, sizeof(mbedtls_pk_context));
+    tls->entropy    = (mbedtls_entropy_context *) calloc(1, sizeof(mbedtls_entropy_context));
+    tls->ctr_drbg   = (mbedtls_ctr_drbg_context *)calloc(1, sizeof(mbedtls_ctr_drbg_context));
+    */
+
+    mbedtls_net_init(&tls->fd);
+    mbedtls_ssl_config_init(&tls->conf);
+    mbedtls_x509_crt_init(&tls->srvcert);
+    mbedtls_pk_init(&tls->pkey);
+    mbedtls_entropy_init(&tls->entropy);
+    mbedtls_ctr_drbg_init(&tls->ctr_drbg);
 
     print("  . Seeding the random number generator...");
-
-    i32 ret = mbedtls_ctr_drbg_seed(tls->ctr_drbg, mbedtls_entropy_func, tls->entropy,
-                                   (handle)pers, strlen(pers));
+    static string pers;
+    if (!pers) pers = string("A-type::net");
+    i32 ret = mbedtls_ctr_drbg_seed(&tls->ctr_drbg, mbedtls_entropy_func, &tls->entropy,
+                                   (handle)pers->chars, strlen(pers));
     if (ret != 0) {
         print(" failed\n  ! mbedtls_ctr_drbg_seed returned %i", ret);
         return;
@@ -284,30 +261,30 @@ none iTLS_init(iTLS tls, uri url) {
     print(" ok\n");
     print("\n  . Loading the server cert. and key...");
 
-    string host = url->host;
+    string host = tls->url->host;
     string pub = format("ssl/%s.crt", host->chars);
     string prv = format("ssl/%s.key", host->chars);
 
-    ret = mbedtls_x509_crt_parse_file(tls->srvcert, pub->chars);
+    ret = mbedtls_x509_crt_parse_file(&tls->srvcert, pub->chars);
     if (ret != 0) {
         print("mbedtls_x509_crt_parse returned %i\n", ret);
         return;
     }
 
-    ret = mbedtls_pk_parse_keyfile(tls->pkey, prv->chars, 0, mbedtls_ctr_drbg_random, tls->ctr_drbg);
+    ret = mbedtls_pk_parse_keyfile(&tls->pkey, prv->chars, 0, mbedtls_ctr_drbg_random, &tls->ctr_drbg);
     if (ret != 0) {
         print("mbedtls_pk_parse_key returned %i\n", ret);
         return;
     }
 
-    string port = str(url->port);
-    ret = mbedtls_net_bind(tls->fd, host->chars, port->chars, MBEDTLS_NET_PROTO_TCP);
+    string port = format("%i", tls->url->port);
+    ret = mbedtls_net_bind(&tls->fd, host->chars, port->chars, MBEDTLS_NET_PROTO_TCP);
     if (ret != 0) {
         print("mbedtls_net_bind returned %i\n", ret);
         return;
     }
 
-    ret = mbedtls_ssl_config_defaults(tls->conf,
+    ret = mbedtls_ssl_config_defaults(&tls->conf,
                                      MBEDTLS_SSL_IS_SERVER,
                                      MBEDTLS_SSL_TRANSPORT_STREAM,
                                      MBEDTLS_SSL_PRESET_DEFAULT);
@@ -316,23 +293,34 @@ none iTLS_init(iTLS tls, uri url) {
         return;
     }
 
-    mbedtls_ssl_conf_rng(tls->conf, mbedtls_ctr_drbg_random, tls->ctr_drbg);
-    mbedtls_ssl_conf_dbg(tls->conf, mbedtls_debug, stdout);
-    mbedtls_ssl_conf_ca_chain(tls->conf, tls->srvcert->next, null);
+    mbedtls_ssl_conf_rng(&tls->conf, mbedtls_ctr_drbg_random, &tls->ctr_drbg);
+    mbedtls_ssl_conf_dbg(&tls->conf, mbedtls_debug, stdout);
+    mbedtls_ssl_conf_ca_chain(&tls->conf, tls->srvcert.next, null);
     
-    ret = mbedtls_ssl_conf_own_cert(tls->conf, tls->srvcert, tls->pkey);
+    ret = mbedtls_ssl_conf_own_cert(&tls->conf, &tls->srvcert, &tls->pkey);
     if (ret != 0) {
         print("mbedtls_ssl_conf_own_cert returned %i\n", ret);
         return;
     }
 }
 
-message message_with_server_code(message m, i32 code) {
+
+message message_with_sock(message m, sock sc) {
+    if (read_headers(m, sc)) {
+        read_content(m, sc);
+        string status = get(m->headers, string("Status"));
+        m->code       = atoi(status->chars);
+    }
+    return m;
+}
+
+
+message message_with_i32(message m, i32 code) {
     m->code = code;
     return m;
 }
 
-message message_with_text(message m, string text) {
+message message_with_string(message m, string text) {
     m->content = text;
     m->code = 200;
     return m;
@@ -356,6 +344,11 @@ message message_with_content(message m, object content, map headers, uri query) 
     return m;
 }
 
+web message_method_type(message m) {
+    return m->query->mtype;
+}
+
+
 bool message_read_headers(message m, sock sc) {
     i32 line = 0;
     for (;;) {
@@ -375,11 +368,11 @@ bool message_read_headers(message m, sock sc) {
             if (len(hello) >= 12) {
                 if (len(sp) >= 3) {
                     m->query = hello;
-                    m->headers["Status"] = get(sp, 1);
+                    set(m->headers, string("Status"), get(sp, 1));
                 }
             }
         } else {
-            for (sz i = 0; i < sz; i++) {
+            for (int i = 0; i < sz; i++) {
                 if (((char*)data(rbytes))[i] == ':') {
                     string k = new(string, chars, data(rbytes), ref_length, i);
                     string v = new(string, chars, &((char*)data(rbytes))[i + 2], 
@@ -399,8 +392,18 @@ bool message_read_content(message m, sock sc) {
     string ce = str("Content-Encoding");
     
     string encoding = contains(m->headers, te) ? get(m->headers, ce) : null;
-    i32 clen = contains(m->headers, cl) ? 
-               cast(i32, get(m->headers, cl)) : -1;
+    i32 clen = -1;
+
+    object o = get(m->headers, cl);
+    if (o) {
+        string v = instanceof(o, string);
+        if (v) {
+            clen = atoi(v->chars);
+        } else {
+            print("unsupported len format: %s", isa(o)->name);
+        }
+    }
+    
     bool chunked = encoding && strcmp(get(m->headers, te), "chunked") == 0;
     num content_len = clen;
     num rlen = 0;
@@ -445,7 +448,7 @@ bool message_read_content(message m, sock sc) {
                 rlen = recv(sc, buf, rx);
                 
                 if (rlen > 0)
-                    push(v_data, buf, rlen);
+                    concat(v_data, buf, rlen);
                 else if (rlen < 0) {
                     error = !sff;
                     break;
@@ -480,6 +483,64 @@ bool message_read_content(message m, sock sc) {
     }
 
     return !error;
+}
+
+
+/// query/request construction
+message message_query(uri server, map headers, object content) {
+    message m;
+    m->query   = uri(
+        mtype,web_Get, proto,server->proto, host,server->host,
+        port,server->port, query,server->query,
+        resource,server->resource, args,server->args,
+        version,server->version);
+    m->headers = headers;
+    m->content = content;
+    return m;
+}
+
+/// response construction, uri is not needed
+message message_response(uri query, i32 code, object content, map headers) {
+    message r;
+    r->query    = uri(
+        mtype,web_Response, proto,query->proto, host,query->host,
+        port,query->port, query,query->query,
+        resource,query->resource, args,query->args,
+        version,query->version);
+    r->code     = code;
+    r->headers  = headers;
+    r->content  = content;
+    return r;
+}
+
+symbol code_symbol(i32 code) {
+    static map symbols = null;
+    if (!symbols) {
+        symbols = new(map);
+        set(symbols, i(200), string("OK"));
+        set(symbols, i(201), string("Created"));
+        set(symbols, i(202), string("Accepted"));
+        set(symbols, i(203), string("Non-Authoritative Information"));
+        set(symbols, i(204), string("No Content"));
+        set(symbols, i(205), string("Reset Content"));
+        set(symbols, i(206), string("Partial Content"));
+        set(symbols, i(300), string("Multiple Choices"));
+        set(symbols, i(301), string("Moved Permanently"));
+        set(symbols, i(302), string("Found"));
+        set(symbols, i(303), string("See Other"));
+        set(symbols, i(304), string("Not Modified"));
+        set(symbols, i(307), string("Temporary Redirect"));
+        set(symbols, i(308), string("Permanent Redirect"));
+        set(symbols, i(400), string("Bad Request"));
+        set(symbols, i(402), string("Payment Required"));
+        set(symbols, i(403), string("Forbidden"));
+        set(symbols, i(404), string("Not Found"));
+        set(symbols, i(500), string("Internal Server Error"));
+        set(symbols, i(0),   string("Unknown"));
+    }
+    string s_code = get(symbols, i(code));
+    string result = s_code ? s_code : (string)get(symbols, i(0));
+    return result->chars;
 }
 
 bool message_cast_bool(message m) {
@@ -518,37 +579,66 @@ map message_cookies(message m) {
 
 
 bool message_write_status(message m, sock sc) {
-    mx status = str("Status");
-    i32 code = contains(m->headers, status) ? 
-               cast(i32, get(m->headers, status)) : 
-               (m->code ? cast(i32, m->code) : 200);
-    return send_str(sc, format("HTTP/1.1 %i %s\r\n", code, code_symbol(code)));
+    string status = string("Status");
+    i32 code = 0;
+    object s = get(m->headers, status);
+    if (s) {
+        AType t = isa(s);
+        int test = 1;
+        test++;
+        code = *(i32*)s;
+    } else if (m->code)
+        code = m->code;
+    else
+        code = 200;
+    return send_object(sc, format("HTTP/1.1 %i %s\r\n", code, code_symbol(code)));
 }
 
 
 bool message_write_headers(message m, sock sc) {
-    each(m->headers, pair, p) {
-        string k = cast(string, p->key);
-        if (strcmp(k->chars, "Status") == 0 || !p->value)
+    pairs(m->headers, ii) {
+        string k = cast(string, ii->key);
+        string v = cast(string, ii->value);
+        if (strcmp(k->chars, "Status") == 0 || !v)
             continue;
-            
-        if (!send_str(sc, format("%s: %s", k->chars, p->value->chars)))
-            return false;
-            
-        if (!send(sc, "\r\n", 2))
+        if (!send_object(sc, format("%o: %o\r\n", k, v)))
             return false;
     }
-    return send(sc, "\r\n", 2);
+    return send_bytes(sc, "\r\n", 2);
 }
 
 
+string encode_fields(map fields) {
+    if (!fields) 
+        return str("");
+
+    string post = new(string, alloc, 1024);
+    bool first = true;
+
+    pairs(fields, i) {
+        string k = str(i->key);
+        string v = str(i->value);
+        
+        if (!first) {
+            append(post, "&");
+        }
+        string encoded = format("%s=%s", 
+            uri_encode(k)->chars, 
+            uri_encode(v)->chars);
+        append(post, encoded);
+        first = false;
+    }
+    
+    return post;
+}
+
 bool message_write(message m, sock sc) {
-    i32 ic = cast(i32, m->code);
+    i32 ic = m->code;
     if (ic > 0) {
         symbol s = code_symbol(ic);
         verify(s, "invalid status code");
         string header = format("HTTP/1.1 %i %s\r\n", ic, s);
-        if (!send_str(sc, header))
+        if (!send_object(sc, header))
             return false;
     }
 
@@ -566,18 +656,19 @@ bool message_write(message m, sock sc) {
             // TODO: JSON stringify
             return false;
         } else if (ct == typeid(map)) {
-            string post = uri_encode_fields(cast(map, m->content));
-            set(m->headers, "Content-Length", str(len(post)));
+            string post = encode_fields(m->content);
+            set(m->headers, "Content-Length", A_i64(len(post)));
             write_headers(m, sc);
-            return send_str(sc, post);
+            return send_object(sc, post);
         } else if (ct == typeid(u8)) {
-            set(m->headers, "Content-Length", str(len(m->content)));
-            return send(sc, data(m->content), len(m->content));
+            num byte_count = A_header(m->content)->count;
+            set(m->headers, "Content-Length", A_i64(byte_count));
+            return send_bytes(sc, m->content, byte_count);
         } else {
             verify(ct == typeid(string), "unsupported content type");
-            set(m->headers, "Content-Length", str(len(m->content)));
+            set(m->headers, "Content-Length", A_i64(len((string)m->content)));
             write_headers(m, sc);
-            return send_str(sc, cast(string, m->content));
+            return send_object(sc, m->content);
         }
     }
     
@@ -628,96 +719,149 @@ string dns(string hostname) {
 }
 
 object request(uri url, map args) {
-    map st_headers = new(map);
-    object null_content = null;
-    map headers = contains(args, "headers") ? get(args, "headers") : st_headers;
-    object content = contains(args, "content") ? get(args, "content") : null_content;
-    web type = contains(args, "method") ? cast(web, get(args, "method")) : web_Get;
-    uri query = url;
-    query->mtype = type;
+    map     st_headers   = new(map);
+    object  null_content = null;
+    map     headers      = contains(args, "headers") ? (map)get (args, "headers") : st_headers;
+    object  content      = contains(args, "content") ? get (args, "content") : null_content;
+    web     type         = contains(args, "method")  ? eval(web, get(args, "method")) : web_Get;
+    uri     query        = url;
 
+    query->mtype = type;
     verify(query->mtype != web_undefined, "undefined web method type");
 
-    sock client = new(sock, query);
+    sock client = sock(query);
     print("(net) request: %o", url);
     if (!connect(client))
         return null;
 
     // Send request line
-    string method = str(cast(string, query->mtype));
-    send_str(client, format("%s %s HTTP/1.1\r\n", method->chars, query->string->chars));
+    string method = estr(web, query->mtype);
+    send_object(client, format("%o %o HTTP/1.1\r\n", method, query->query));
 
     // Default headers
-    if (!contains(headers, "User-Agent"))
-        set(headers, "User-Agent", "ion:net");
-    if (!contains(headers, "Accept"))
-        set(headers, "Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-    if (!contains(headers, "Accept-Language"))
-        set(headers, "Accept-Language", "en-US,en;q=0.9");
-    if (!contains(headers, "Accept-Encoding"))
-        set(headers, "Accept-Encoding", "gzip, deflate, br");
-    if (!contains(headers, "Host"))
-        set(headers, "Host", query->host);
+    if (!contains(headers, "User-Agent"))      set(headers, "User-Agent", "ion:net");
+    if (!contains(headers, "Accept"))          set(headers, "Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
+    if (!contains(headers, "Accept-Language")) set(headers, "Accept-Language", "en-US,en;q=0.9");
+    if (!contains(headers, "Accept-Encoding")) set(headers, "Accept-Encoding", "gzip, deflate, br");
+    if (!contains(headers, "Host"))            set(headers, "Host", query->host);
 
-    message request = new(message, content, headers, query);
+    message request = message(content, content, headers, headers, query, query);
     write(request, client);
 
-    message response = new(message, client);
+    message response = message(client);
     close(client);
 
     return response;
 }
 
-object json_request(uri addr, map args, map headers) {
-    // JSON request implementation goes here - would need implementation details
-    // for the lambda/future mechanics in the A-type system
-    verify(false, "json_request not implemented");
-    return null;
+
+uri uri_parse(string raw, uri ctx) {
+    uri result = new(uri);
+    array sp = split(raw, str(" "));
+    bool has_method = len(sp) > 1;
+    string lcase = len(sp) > 0 ? str(get(sp, 0)) : null;
+    web m = eval(web, has_method ? lcase->chars : "get");
+    string u = get(sp, has_method ? 1 : 0);
+    result->mtype = m;
+
+    // find protocol separator
+    num iproto = index_of(u, str("://"));
+    if (iproto >= 0) {
+        string p = mid(u, 0, iproto);
+        u = mid(u, iproto + 3, len(u) - (iproto + 3));
+        num ihost = index_of(u, str("/"));
+        result->proto = eval(protocol, p->chars);
+        result->query = ihost >= 0 ? mid(u, ihost, len(u) - ihost) : str("/");
+        string h = ihost >= 0 ? mid(u, 0, ihost) : u;
+        num ih = index_of(h, str(":"));
+        u = result->query;
+        
+        if (ih > 0) {
+            result->host = mid(h, 0, ih);
+            result->port = atoi(mid(h, ih + 1, len(h) - (ih + 1))->chars);
+        } else {
+            result->host = h;
+            result->port = 0; // looked up by method
+        }
+    } else {
+        // return default
+        result->proto = ctx ? ctx->proto : protocol_undefined;
+        result->host = ctx ? ctx->host : str("");
+        result->port = ctx ? ctx->port : 0;
+        result->query = u;
+    }
+
+    // parse resource and query
+    num iq = index_of(u, str("?"));
+    if (iq > 0) {
+        result->resource = uri_decode(mid(u, 0, iq));
+        string q = uri_decode(mid(u, iq + 1, len(u) - (iq + 1)));
+        array a = split(q, str("&"));
+        result->args = new(map);
+        
+        each(a, string, kv) {
+            array sp = split(kv, str("="));
+            object k = get(sp, 0);
+            object v = len(sp) > 1 ? get(sp, 1) : k;
+            set(result->args, k, v);
+        }
+    } else {
+        result->resource = uri_decode(u);
+    }
+
+    if (len(sp) >= 3) {
+        result->version = get(sp, 2);
+    }
+
+    return result;
 }
 
+
 string uri_encode(string s) {
-    static string chars = str(" -._~:/?#[]@!$&'()*+;%=");
+    static string chars;
+    if (!chars) chars = string(" -._~:/?#[]@!$&'()*+;%=");
     
     sz len = len(s);
-    vector v = new(vector);
+    string v = string(alloc, len * 2);
     
     for (sz i = 0; i < len; i++) {
         char c = s->chars[i];
         bool a = ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9'));
         if (!a)
-            a = index_of(chars, str(c)) != -1;
+            a = index_of(chars, string((i32)c)) != -1;
             
         if (!a) {
-            push(v, '%');
+            append(v, "%");
             char hex[3];
             snprintf(hex, sizeof(hex), "%02x", (u8)c);
-            push(v, hex[0]);
-            push(v, hex[1]);
+            append(v, hex);
         } else {
-            push(v, c);
+            char ch[2] = { c, 0 };
+            append(v, ch);
         }
         
         if (c == '%')
-            push(v, '%');
+            append(v, "%");
     }
     
-    return string(chars, data(v), ref_length, len(v));
+    return v;
 }
 
 string uri_decode(string e) {
-    sz sz = len(e);
-    vector v = new(vector);
-    sz i = 0;
+    num sz = len(e);
+    string v = string(alloc, sz * 2);
+    num i = 0;
 
     while (i < sz) {
         char c0 = e->chars[i];
+        char cstr[2] = { c0, 0 };
         if (c0 == '%') {
             if (i >= sz - 1)
                 break;
                 
             char c1 = e->chars[i + 1];
             if (c1 == '%') {
-                push(v, '%');
+                append(v, "%");
             } else {
                 if (i >= sz - 2)
                     break;
@@ -726,11 +870,12 @@ string uri_decode(string e) {
                 char hex[3] = {c1, c2, 0};
                 u8 val;
                 sscanf(hex, "%hhx", &val);
-                push(v, val);
+                char vstr[2] = { val, 0 };
+                append(v, vstr);
                 i += 2;
             }
         } else {
-            push(v, (c0 == '+') ? ' ' : c0);
+            append(v, (c0 == '+') ? " " : cstr);
         }
         i++;
     }
@@ -746,10 +891,10 @@ object handle_client(object target, object client_sock, object context) {
 }
 
 object sock_listen(uri url, subprocedure handler) {
-    TLS tls = new(TLS, url);
+    TLS tls = TLS(url, url);
     
     for (;;) {
-        sock client = accept(tls);
+        sock client = sock_accept(tls);
         if (!client)
             break;
 
@@ -764,7 +909,14 @@ object sock_listen(uri url, subprocedure handler) {
     return tls;
 }
 
-// Implementation wrappers
+void sock_with_uri(sock s, uri addr) {
+    s->data = Session(TLS(addr, addr));
+}
+
+void sock_with_TLS(sock s, TLS tls) {
+    s->data = Session(tls);
+}
+
 bool sock_bind(sock s, uri addr) {
     return Session_bind(s->data, addr);
 }
@@ -793,13 +945,9 @@ sz sock_send_bytes(sock s, handle buf, sz len) {
     return Session_send(s->data, buf, len);
 }
 
-/// not 
-sz sock_send_str(sock s, string templ, array args) {
-    return Session_send_str(s->data, templ, args); 
-}
-
 sz sock_send_object(sock s, object v) {
-    return Session_send_object(s->data, v);
+    string str = cast(string, v);
+    return Session_send_string(s->data, str);
 }
 
 vector sock_read_until(sock s, string match, i32 max_len) {
@@ -807,11 +955,12 @@ vector sock_read_until(sock s, string match, i32 max_len) {
 }
 
 sock sock_accept(TLS tls) {
-    return Session_accept(tls);
+    Session s = Session_accept(tls);
+    return s ? sock(s->tls) : null;
 }
 
 bool sock_cast_bool(sock s) {
-    return s->connected;
+    return s->data->connected;
 }
 
 bool sock_read(sock s, handle buf, sz len) {
@@ -843,3 +992,13 @@ object json_request(uri addr, map args, map headers, subprocedure success_handle
         return invoke(failure_handler, response);
     }
 }
+
+
+define_class(uri)
+define_class(Session)
+define_class(TLS)
+define_class(sock)
+define_class(message)
+
+define_enum(web)
+define_enum(protocol)

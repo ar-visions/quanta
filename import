@@ -1,10 +1,9 @@
 mbedtls https://github.com/Mbed-TLS/mbedtls 1873d3b
 	-DENABLE_TESTING=0
+    -DCMAKE_POSITION_INDEPENDENT_CODE=1
 	-DLINK_WITH_PTHREAD=1
 
-ssh https://git.libssh.org/projects/libssh.git 5d792a3b5a5fc2331cb52d6febdd886c5df580e3
-
 lib:
-    mbedtls ssh
+    A mbedtls mbedx509 mbedcrypto pthread
 app:
-    A
+    A mbedtls mbedx509 mbedcrypto pthread
