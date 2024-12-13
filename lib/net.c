@@ -718,7 +718,7 @@ string dns(string hostname) {
     return result;
 }
 
-object request(uri url, map args) {
+object request(uri url, object args) {
     map     st_headers   = new(map);
     object  null_content = null;
     map     headers      = contains(args, "headers") ? (map)get (args, "headers") : st_headers;
