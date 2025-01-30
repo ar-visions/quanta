@@ -5,7 +5,7 @@
 /// opaque
 typedef struct Session* Session;
 
-#define protocol_schema(X,Y) \
+#define protocol_schema(X,Y,...) \
     enum_value(X,Y, undefined) \
     enum_value(X,Y, http) \
     enum_value(X,Y, https) \
@@ -13,7 +13,7 @@ typedef struct Session* Session;
     enum_value(X,Y, ssh)
 declare_enum(protocol)
 
-#define web_schema(X,Y) \
+#define web_schema(X,Y,...) \
     enum_value(X,Y, undefined) \
     enum_value(X,Y, Response) \
     enum_value(X,Y, Get) \
@@ -22,7 +22,7 @@ declare_enum(protocol)
     enum_value(X,Y, Delete)
 declare_enum(web)
 
-#define uri_schema(X,Y) \
+#define uri_schema(X,Y,...) \
     i_prop    (X,Y, public,  web,      mtype) \
     i_prop    (X,Y, public,  protocol, proto) \
     i_prop    (X,Y, public,  string,   host) \
@@ -42,7 +42,7 @@ declare_class(uri)
 
 typedef struct TLS* TLS;
 
-#define sock_schema(X,Y) \
+#define sock_schema(X,Y,...) \
     i_prop    (X,Y, intern,  Session,  data) \
     i_method  (X,Y, public,  bool,     bind, uri) \
     i_method  (X,Y, public,  bool,     connect) \
@@ -63,7 +63,7 @@ typedef struct TLS* TLS;
 declare_class(sock)
 
 
-#define Session_schema(X,Y) \
+#define Session_schema(X,Y,...) \
     i_prop    (X,Y, public,  TLS,      tls) \
     i_prop    (X,Y, intern,  mbedtls_net_context,   fd) \
     i_prop    (X,Y, intern,  mbedtls_ssl_context,   ssl) \
@@ -87,7 +87,7 @@ declare_class(sock)
 declare_class(Session)
 
 
-#define message_schema(X,Y) \
+#define message_schema(X,Y,...) \
     i_prop    (X,Y, public,  uri,     query) \
     i_prop    (X,Y, public,  i32,     code) \
     i_prop    (X,Y, public,  map,     headers) \
@@ -115,7 +115,7 @@ declare_class(message)
 typedef struct iTLS* iTLS;
 
 
-#define TLS_schema(X,Y) \
+#define TLS_schema(X,Y,...) \
     i_prop    (X,Y, intern,  mbedtls_net_context,       fd) \
     i_prop    (X,Y, intern,  mbedtls_entropy_context,   entropy) \
     i_prop    (X,Y, intern,  mbedtls_ctr_drbg_context,  ctr_drbg) \
