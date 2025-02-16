@@ -135,4 +135,6 @@ declare_class(TLS)
 string dns(string hostname);
 object json_request(uri addr, map args, map headers, subprocedure success_handler, subprocedure failure_handler);
 
+object request(uri url, map args);
+
 #endif
