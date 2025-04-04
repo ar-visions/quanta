@@ -723,7 +723,7 @@ object request(uri url, map args) {
     object  null_content = null;
     map     headers      = contains(args, "headers") ? (map)get (args, "headers") : st_headers;
     object  content      = contains(args, "content") ? get (args, "content") : null_content;
-    web     type         = contains(args, "method")  ? eval(web, get(args, "method")) : web_Get;
+    web     type         = contains(args, "method")  ? e_val(web, get(args, "method")) : web_Get;
     uri     query        = url;
 
     query->mtype = type;
@@ -760,7 +760,7 @@ uri uri_parse(string raw, uri ctx) {
     array sp = split(raw, str(" "));
     bool has_method = len(sp) > 1;
     string lcase = len(sp) > 0 ? str(get(sp, 0)) : null;
-    web m = eval(web, has_method ? lcase->chars : "get");
+    web m = e_val(web, has_method ? lcase->chars : "get");
     string u = get(sp, has_method ? 1 : 0);
     result->mtype = m;
 
@@ -770,7 +770,7 @@ uri uri_parse(string raw, uri ctx) {
         string p = mid(u, 0, iproto);
         u = mid(u, iproto + 3, len(u) - (iproto + 3));
         num ihost = index_of(u, str("/"));
-        result->proto = eval(protocol, p->chars);
+        result->proto = e_val(protocol, p->chars);
         result->query = ihost >= 0 ? mid(u, ihost, len(u) - ihost) : str("/");
         string h = ihost >= 0 ? mid(u, 0, ihost) : u;
         num ih = index_of(h, str(":"));

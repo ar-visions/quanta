@@ -35,9 +35,6 @@ declare_enum(web)
     s_method  (X,Y, public,  uri,      parse, string, uri) \
     s_method  (X,Y, public,  string,   encode, string) \
     s_method  (X,Y, public,  string,   decode, string)
-#ifndef uri_intern
-#define uri_intern
-#endif
 declare_class(uri)
 
 typedef struct TLS* TLS;
@@ -57,9 +54,6 @@ typedef struct TLS* TLS;
     i_ctr     (X,Y, public,  TLS) \
     i_ctr     (X,Y, public,  uri) \
     i_override(X,Y, cast,    bool)
-#ifndef sock_intern
-#define sock_intern
-#endif
 declare_class(sock)
 
 
@@ -81,9 +75,6 @@ declare_class(sock)
     i_method  (X,Y, public,  sz,       send_string, string) \
     i_method  (X,Y, public,  vector,   read_until,  string, i32) \
     s_method  (X,Y, public,  Session,  accept,      TLS)
-#ifndef Session_intern
-#define Session_intern
-#endif
 declare_class(Session)
 
 
@@ -106,9 +97,6 @@ declare_class(Session)
     i_ctr     (X,Y, public,  i32) \
     i_ctr     (X,Y, public,  string) \
     i_override(X,Y, cast,    bool)
-#ifndef message_intern
-#define message_intern
-#endif
 declare_class(message)
 
 
@@ -127,9 +115,6 @@ typedef struct iTLS* iTLS;
     i_prop    (X,Y, intern,  handle,   ssl) \
     i_prop    (X,Y, public,  uri,      addr) \
     i_override(X,Y, method, init)
-#ifndef TLS_intern
-#define TLS_intern
-#endif
 declare_class(TLS)
 
 string dns(string hostname);
