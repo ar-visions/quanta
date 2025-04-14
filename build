@@ -1,0 +1,10 @@
+import:
+    mbedtls https://github.com/Mbed-TLS/mbedtls 1873d3b
+        -DENABLE_TESTING=0
+        -DCMAKE_POSITION_INDEPENDENT_CODE=1
+        -DLINK_WITH_PTHREAD=1
+
+lib:
+    A mbedtls mbedx509 mbedcrypto pthread
+app:
+    A mbedtls mbedx509 mbedcrypto pthread
