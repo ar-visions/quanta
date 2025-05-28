@@ -994,11 +994,11 @@ object json_request(uri addr, map args, map headers, subprocedure success_handle
 }
 
 
-define_class(uri)
-define_class(Session)
-define_class(TLS)
-define_class(sock)
-define_class(message)
+define_class(uri,       A)
+define_class(Session,   A)
+define_class(TLS,       A)
+define_class(sock,      A)
+define_class(message,   A)
 
 define_enum(web)
 define_enum(protocol)

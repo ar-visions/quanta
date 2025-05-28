@@ -6,20 +6,20 @@
 typedef struct Session* Session;
 
 #define protocol_schema(X,Y,...) \
-    enum_value(X,Y, undefined) \
-    enum_value(X,Y, http) \
-    enum_value(X,Y, https) \
-    enum_value(X,Y, wss) \
-    enum_value(X,Y, ssh)
+    enum_value(E,T,Y, undefined,  0) \
+    enum_value(E,T,Y, http,       1) \
+    enum_value(E,T,Y, https,      2) \
+    enum_value(E,T,Y, wss,        3) \
+    enum_value(E,T,Y, ssh,        4)
 declare_enum(protocol)
 
 #define web_schema(X,Y,...) \
-    enum_value(X,Y, undefined) \
-    enum_value(X,Y, Response) \
-    enum_value(X,Y, Get) \
-    enum_value(X,Y, Post) \
-    enum_value(X,Y, Put) \
-    enum_value(X,Y, Delete)
+    enum_value(E,T,Y, undefined,  0) \
+    enum_value(E,T,Y, Response,   1) \
+    enum_value(E,T,Y, Get,        2) \
+    enum_value(E,T,Y, Post,       3) \
+    enum_value(E,T,Y, Put,        4) \
+    enum_value(E,T,Y, Delete,     5)
 declare_enum(web)
 
 #define uri_schema(X,Y,...) \
