@@ -3,7 +3,7 @@
 
 
 int main(int argc, symbol argv[]) {
-    A_start();
+    A_start(argc, argv);
     map    args   = A_args(argc, argv, "server", string("www.silver-lang.org"), null);
     string server = get(args, string("server"));
 
